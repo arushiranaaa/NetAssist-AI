@@ -1,30 +1,36 @@
 import json
-import re
-from langchain_ollama import OllamaLLM
-from langchain_core.prompts import PromptTemplate
-from app.models.schemas import ChatResponse, LogResponse
+import os
+from dotenv import load_dotenv
+from langchain_groq import ChatGroq
+
+# Load variables from .env file
+load_dotenv()
 
 class AIService:
     def __init__(self):
-        self.model = OllamaLLM(model="llama3.2:3b")
+        # We switch from Ollama to ChatGroq for cloud speed
+        self.model = ChatGroq(
+            temperature=0, 
+            model_name="llama-3.3-70b-versatile",
+            groq_api_key=os.getenv("GROQ_API_KEY")
+        )
 
     async def analyze_incident(self, message: str):
         system_prompt = f"""
         You are NetAssist AI, a Senior Network Engineering Assistant.
         Provide accurate technical support based ONLY on the provided manual context.
 
-        RULES:
-        1. If the answer is in the "Context", provide details.
-        2. If NOT in the "Context", say you don't know.
-        3. Always include 'probable_causes' and 'troubleshooting_steps' as lists.
-        4. If it's a general question or info is missing, leave the lists empty [].
-
+        STRICT RULES:
+        1. If the answer is in the "Context", summarize it technically.
+        2. If NOT in the "Context", say: "I'm sorry, but that specific detail is not mentioned in the manual."
+        3. Do NOT use outside knowledge.
+        
         OUTPUT FORMAT (Return ONLY JSON):
         {{
             "explanation": "text answer",
             "severity": "LOW" | "MEDIUM" | "HIGH",
-            "probable_causes": ["cause 1", "cause 2"],
-            "troubleshooting_steps": ["step 1", "step 2"]
+            "probable_causes": ["cause 1"],
+            "troubleshooting_steps": ["step 1"]
         }}
 
         CONTEXT AND REQUEST:
@@ -32,25 +38,20 @@ class AIService:
         """
 
         try:
-            response_text = self.model.invoke(system_prompt)
+            response = self.model.invoke(system_prompt)
+            # The content of the response is where the JSON lives
+            data = json.loads(response.content)
             
-            # Extract JSON part
-            start = response_text.find("{")
-            end = response_text.rfind("}") + 1
-            data = json.loads(response_text[start:end])
-            
-            # Ensure all required fields exist to satisfy the validator
             return {
-                "explanation": data.get("explanation", response_text),
+                "explanation": data.get("explanation", "No explanation provided."),
                 "severity": data.get("severity", "LOW"),
                 "probable_causes": data.get("probable_causes", []),
                 "troubleshooting_steps": data.get("troubleshooting_steps", [])
             }
-
         except Exception as e:
-            print(f"AI Service Error: {e}")
+            print(f"Cloud AI Error: {e}")
             return {
-                "explanation": "Error processing request.",
+                "explanation": "The cloud AI engine is currently unavailable.",
                 "severity": "CRITICAL",
                 "probable_causes": [],
                 "troubleshooting_steps": []
