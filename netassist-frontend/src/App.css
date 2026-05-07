@@ -1,0 +1,19 @@
+.file-badge {
+  background: #1e293b;
+  border-top: 1px solid #334155;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.file-badge strong { color: #f8fafc; }
+
+.file-badge button {
+  background: transparent;
+  color: #ef4444;
+  padding: 0 5px;
+  font-size: 16px;
+}

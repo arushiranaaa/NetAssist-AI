@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+venv/
+*.pyc
+uploads/*
+!uploads/.gitkeep
+
+# Database (Do NOT upload this, it's too big!)
+chroma_db/
+
+# Node / React
+node_modules/
+dist/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
