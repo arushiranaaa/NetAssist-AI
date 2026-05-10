@@ -35,7 +35,7 @@ const App = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:8000/api/rag/upload', {
+      const response = await fetch('https://netassist-backend.onrender.com', {
         method: 'POST',
         body: formData,
       });
@@ -69,7 +69,7 @@ const App = () => {
     setIsTyping(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/rag/chat', {
+      const response = await fetch('https://netassist-backend.onrender.com', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: currentInput }),
