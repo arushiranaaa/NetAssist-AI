@@ -3,15 +3,14 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
-# Load variables from .env file
 load_dotenv()
 
 class AIService:
     def __init__(self):
-        # We switch from Ollama to ChatGroq for cloud speed
+        # Using 8b-instant for deployment to ensure < 2s response times
         self.model = ChatGroq(
             temperature=0, 
-            model_name="llama-3.3-70b-versatile",
+            model_name="llama-3.1-8b-instant",
             groq_api_key=os.getenv("GROQ_API_KEY")
         )
 
@@ -21,11 +20,11 @@ class AIService:
         Provide accurate technical support based ONLY on the provided manual context.
 
         STRICT RULES:
-        1. If the answer is in the "Context", summarize it technically.
-        2. If NOT in the "Context", say: "I'm sorry, but that specific detail is not mentioned in the manual."
-        3. Do NOT use outside knowledge.
+        1. If the answer is in the "Context", provide a concise explanation.
+        2. If NOT in the "Context", say: "That specific detail is not mentioned in the manual."
+        3. OUTPUT ONLY VALID JSON.
         
-        OUTPUT FORMAT (Return ONLY JSON):
+        FORMAT:
         {{
             "explanation": "text answer",
             "severity": "LOW" | "MEDIUM" | "HIGH",
@@ -33,26 +32,20 @@ class AIService:
             "troubleshooting_steps": ["step 1"]
         }}
 
-        CONTEXT AND REQUEST:
+        CONTEXT:
         {message}
         """
 
         try:
             response = self.model.invoke(system_prompt)
-            # The content of the response is where the JSON lives
-            data = json.loads(response.content)
-            
-            return {
-                "explanation": data.get("explanation", "No explanation provided."),
-                "severity": data.get("severity", "LOW"),
-                "probable_causes": data.get("probable_causes", []),
-                "troubleshooting_steps": data.get("troubleshooting_steps", [])
-            }
+            # Remove markdown code blocks if the LLM accidentally includes them
+            clean_content = response.content.replace("```json", "").replace("```", "").strip()
+            return json.loads(clean_content)
         except Exception as e:
-            print(f"Cloud AI Error: {e}")
+            print(f"Deployment Error: {e}")
             return {
-                "explanation": "The cloud AI engine is currently unavailable.",
-                "severity": "CRITICAL",
-                "probable_causes": [],
-                "troubleshooting_steps": []
+                "explanation": "The AI service is currently resetting connection.",
+                "severity": "HIGH",
+                "probable_causes": ["Cloud API Latency"],
+                "troubleshooting_steps": ["Check your Groq API Key quota", "Refresh the session"]
             }

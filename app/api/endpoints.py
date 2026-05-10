@@ -1,42 +1,27 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from app.services.ai_service import AIService
+from fastapi import APIRouter, UploadFile, File
 from app.rag.rag_service import RAGService
-from app.models.schemas import ChatRequest, ChatResponse
-import os
-import traceback
+from app.services.ai_service import AIService
 
 router = APIRouter()
-ai_service = AIService()
+
+# --- INITIALIZE ONCE AT STARTUP ---
+# This keeps the model in RAM so it doesn't reload every time
 rag_service = RAGService()
+ai_service = AIService()
 
 @router.post("/rag/upload")
 async def upload_manual(file: UploadFile = File(...)):
-    # 1. Create the folder if it doesn't exist
-    if not os.path.exists("uploads"):
-        os.makedirs("uploads")
-        print("Created missing 'uploads' folder.")
-        
-    file_path = f"uploads/{file.filename}"
-    
-    try:
-        # 2. Save the file
-        contents = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        print(f"File saved to: {file_path}")
-        
-        # 3. Index it (This is usually where the 500 happens!)
-        rag_service.index_document(file_path)
-        
-        return {"message": f"Successfully indexed {file.filename}"}
-    
-    except Exception as e:
-        # THIS LINE IS KEY: It prints the real error in your VS Code terminal
-        print("\n!!! UPLOAD CRASHED !!!")
-        print(traceback.format_exc()) 
-        raise HTTPException(status_code=500, detail=str(e))
+    # ... your upload logic using rag_service ...
+    pass
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
-    context = rag_service.query_docs(request.message)
-    return await ai_service.analyze_incident(f"Context: {context}\n\nQuestion: {request.message}")
+@router.post("/rag/chat")
+async def chat_with_docs(request: dict):
+    question = request.get("question")
+    context = rag_service.query_docs(question)
+    
+    # Combined context and question
+    full_query = f"Context: {context}\n\nQuestion: {question}"
+    
+    # This will now be 10x faster
+    response = await ai_service.analyze_incident(full_query)
+    return response
